@@ -1,6 +1,12 @@
 # Użycie oficjalnego obrazu Pythona
 FROM python:3.11-slim
 
+# Instalacja zależności systemowych wymaganych przez psycopg2-binary
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Ustawienie katalogu roboczego
 WORKDIR /app
 
@@ -12,4 +18,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Komenda uruchamiająca aplikację (może być zmieniona później)
-CMD ["python", "main.py"]
+CMD ["tail", "-f", "/dev/null"]

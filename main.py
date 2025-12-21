@@ -1,12 +1,18 @@
 import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_tool_calling_agent
+# from langchain.agents import create_tool_calling_agent
+# from langchain.agents.agent_executor import AgentExecutor
+# from langchain.agents import create_tool_calling_agent
+# from langchain.agents import AgentExecutor # Wracamy do tego importu
+from langchain.agents import AgentExecutor, create_tool_calling_agent # Wracamy do pierwotnego importu
+
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage
 from tools import (
     get_available_vehicles,
     fetch_data_for_chart,
+    get_data_range,
     calculate_average_speed,
     calculate_total_distance,
     calculate_traction_energy_per_km,
@@ -29,6 +35,7 @@ if not OPENAI_API_KEY or OPENAI_API_KEY == "TWOJ_KLUCZ_API_GPT":
 tools = [
     get_available_vehicles,
     fetch_data_for_chart,
+    get_data_range,
     calculate_average_speed,
     calculate_total_distance,
     calculate_traction_energy_per_km,
@@ -49,19 +56,16 @@ Jesteś zaawansowanym asystentem do analizy danych telemetrycznych pojazdów.
 Twoim zadaniem jest odpowiadanie na pytania użytkownika dotyczące prędkości, 
 dystansu i zużycia energii pojazdów w określonych zakresach dat.
 
-Masz dostęp do zestawu narzędzi (tools), które MUSISZ wykorzystać do:
-1. Pobierania danych z bazy (fetch_data_for_chart).
-2. Wykonywania obliczeń analitycznych (np. calculate_average_speed, calculate_total_distance, calculate_total_energy_per_km).
-3. Generowania czytelnych raportów tekstowych (format_analysis_report).
-4. Generowania wykresów (generate_single_chart, generate_multi_chart).
-
-**Zasady działania:**
-- Zawsze najpierw użyj `get_available_vehicles`, aby sprawdzić, jakie pojazdy są dostępne.
-- Aby wykonać analizę lub wygenerować wykres, MUSISZ najpierw użyć `fetch_data_for_chart` z poprawnym `vehicle_id`, `start_date` i `end_date`. Wynik tego narzędzia (string JSON z danymi) przekaż jako argument `data_json` do kolejnych narzędzi.
-- Jeśli użytkownik prosi o analizę (np. "ile km przejechał"), użyj narzędzi obliczeniowych, a następnie `format_analysis_report`, aby podsumować wyniki.
-- Jeśli użytkownik prosi o wykres (np. "wykres prędkości"), użyj `generate_single_chart` lub `generate_multi_chart`. Pamiętaj, że te narzędzia zwracają string JSON (definicję wykresu Plotly), który musisz przekazać użytkownikowi.
-- Zawsze podawaj daty w formacie 'YYYY-MM-DD'.
-- Bądź uprzejmy i precyzyjny w odpowiedziach.
+**Zasady działania (MUSISZ ich przestrzegać):**
+1. Zawsze zaczynaj od użycia `get_available_vehicles` i `get_data_range` (jeśli nie znasz zakresu dat).
+2. Aby wykonać analizę lub wygenerować wykres, MUSISZ najpierw użyć `fetch_data_for_chart` z poprawnym `vehicle_id`, `start_date` i `end_date`.
+3. Wynik z `fetch_data_for_chart` (string JSON z danymi) przekaż jako argument `data_json` do kolejnych narzędzi.
+4. **NIGDY** nie zwracaj surowego JSON-a z danymi do użytkownika. Użyj go tylko jako wejścia do innych narzędzi.
+5. Jeśli użytkownik prosi o analizę, użyj narzędzi obliczeniowych, a następnie `format_analysis_report`, aby podsumować wyniki.
+6. Jeśli użytkownik prosi o wykres, użyj `generate_single_chart` lub `generate_multi_chart`. 
+   **MUSISZ ZAWSZE ZWRÓCIĆ CAŁY WYNIK Z TEGO NARZĘDZIA (JSON PLOTLY) BEZ ŻADNYCH DODATKOWYCH KOMENTARZY** 
+   lub sformatuj go w specjalny blok kodu.
+7. Zawsze podawaj daty w formacie 'YYYY-MM-DD'.
 """
 
 prompt = ChatPromptTemplate.from_messages(

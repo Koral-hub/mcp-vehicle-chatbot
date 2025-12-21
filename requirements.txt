@@ -1,5 +1,6 @@
-langchain
+langchain==0.1.16 
 openai
+langchain-openai
 psycopg2-binary
 pandas
 matplotlib
@@ -12,3 +13,4 @@ fastapi
 # Dodano bibliotekę do generowania wykresów
 plotly
 kaleido
+ipython

@@ -7,6 +7,7 @@ from typing import List, Dict, Any
 import plotly.express as px
 import plotly.io as pio
 import json
+from langchain.tools import tool
 
 # Ustawienie renderera Plotly na 'json' do zwracania wykresów jako JSON
 # W normalnym środowisku użyłbym 'png' lub 'jpeg', ale w tym przypadku JSON jest bezpieczniejszy
@@ -23,6 +24,7 @@ def get_db_connection():
         raise ValueError("DATABASE_URL nie jest ustawione w zmiennych środowiskowych.")
     return psycopg2.connect(DB_URL)
 
+@tool
 def get_available_vehicles() -> List[str]:
     """
     Zwraca listę unikalnych identyfikatorów pojazdów dostępnych w bazie danych.
@@ -41,6 +43,36 @@ def get_available_vehicles() -> List[str]:
         if conn:
             conn.close()
 
+@tool
+def get_data_range(vehicle_id: str) -> str:
+    """
+    Zwraca minimalną i maksymalną datę (zakres) dostępnych danych dla danego pojazdu.
+    
+    :param vehicle_id: Identyfikator pojazdu (np. 'Pojazd_1').
+    :return: String z zakresem dat (np. '2025-02-10 do 2025-02-14').
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        query = f"""
+        SELECT MIN(timestamp) as min_date, MAX(timestamp) as max_date
+        FROM vehicle_data
+        WHERE vehicle_id = %s;
+        """
+        df = pd.read_sql(query, conn, params=(vehicle_id,))
+        
+        min_date = df['min_date'].iloc[0].strftime('%Y-%m-%d')
+        max_date = df['max_date'].iloc[0].strftime('%Y-%m-%d')
+        
+        return f"Zakres dat dla {vehicle_id}: od {min_date} do {max_date}."
+    except Exception as e:
+        return f"Błąd podczas pobierania zakresu dat: {e}"
+    finally:
+        if conn:
+            conn.close()
+
+
+@tool
 def fetch_data_for_chart(vehicle_id: str, start_date: str, end_date: str) -> str:
     """
     Pobiera surowe dane telemetryczne (prędkość, moce, dystans) dla danego pojazdu 
@@ -101,6 +133,7 @@ def _calculate_energy_consumption(df: pd.DataFrame, power_col: str) -> float:
     consumption = total_energy_kwh / total_distance_km
     return round(consumption, 4)
 
+@tool
 def calculate_average_speed(data_json: str) -> float:
     """
     Oblicza średnią prędkość (km/h) na podstawie danych telemetrycznych.
@@ -115,7 +148,8 @@ def calculate_average_speed(data_json: str) -> float:
         return round(df['speed_kmh'].mean(), 2)
     except Exception:
         return 0.0
-
+    
+@tool
 def calculate_total_distance(data_json: str) -> float:
     """
     Oblicza całkowity przejechany dystans (km) na podstawie danych telemetrycznych.
@@ -130,7 +164,8 @@ def calculate_total_distance(data_json: str) -> float:
         return round(df['distance_km'].sum(), 2)
     except Exception:
         return 0.0
-
+    
+@tool
 def calculate_traction_energy_per_km(data_json: str) -> float:
     """
     Oblicza zużycie energii trakcyjnej w kWh/km.
@@ -143,7 +178,8 @@ def calculate_traction_energy_per_km(data_json: str) -> float:
         return _calculate_energy_consumption(df, 'traction_power_kw')
     except Exception:
         return 0.0
-
+    
+@tool
 def calculate_hvac_energy_per_km(data_json: str) -> float:
     """
     Oblicza zużycie energii HVAC w kWh/km.
@@ -156,7 +192,8 @@ def calculate_hvac_energy_per_km(data_json: str) -> float:
         return _calculate_energy_consumption(df, 'hvac_power_kw')
     except Exception:
         return 0.0
-
+    
+@tool
 def calculate_total_energy_per_km(data_json: str) -> float:
     """
     Oblicza całkowite zużycie energii (trakcja + HVAC) w kWh/km.
@@ -172,6 +209,7 @@ def calculate_total_energy_per_km(data_json: str) -> float:
     except Exception:
         return 0.0
 
+@tool
 def format_analysis_report(vehicle_id: str, start_date: str, end_date: str, data_json: str) -> str:
     """
     Generuje czytelny raport tekstowy podsumowujący analizę danych.
@@ -207,6 +245,7 @@ def format_analysis_report(vehicle_id: str, start_date: str, end_date: str, data
     """
     return report.strip()
 
+@tool
 def generate_single_chart(data_json: str, parameter: str) -> str:
     """
     Generuje wykres liniowy dla pojedynczego parametru (np. 'speed_kmh').
@@ -237,7 +276,8 @@ def generate_single_chart(data_json: str, parameter: str) -> str:
         return fig.to_json()
     except Exception as e:
         return json.dumps({"error": f"Błąd podczas generowania wykresu dla {parameter}: {e}"})
-
+    
+@tool
 def generate_multi_chart(data_json: str, parameters: List[str]) -> str:
     """
     Generuje wykres liniowy dla wielu parametrów na jednym wykresie.

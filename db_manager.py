@@ -64,6 +64,8 @@ def generate_synthetic_data(num_records=1000, num_vehicles=3):
             # Obliczenie dystansu (prędkość * czas w godzinach)
             # Czas między pomiarami to 1 minuta = 1/60 godziny
             distance_km = new_speed * (1/60)
+            if distance_km == 0:
+                distance_km = 0.000001 # Minimalny dystans, aby uniknąć błędu
             
             data.append({
                 "vehicle_id": vehicle_id,
@@ -125,7 +127,7 @@ def setup_database():
         create_table(conn)
         
         # 2. Generowanie danych
-        data_df = generate_synthetic_data(num_records=3000, num_vehicles=3)
+        data_df = generate_synthetic_data(num_records=300, num_vehicles=3)
         
         # 3. Wstawianie danych
         insert_data(conn, data_df)
