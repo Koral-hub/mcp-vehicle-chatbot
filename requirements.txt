@@ -1,0 +1,14 @@
+langchain
+openai
+psycopg2-binary
+pandas
+matplotlib
+python-dotenv
+scikit-learn
+faker
+pydantic
+uvicorn
+fastapi
+# Dodano bibliotekę do generowania wykresów
+plotly
+kaleido
