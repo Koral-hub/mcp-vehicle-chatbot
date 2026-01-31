@@ -43,6 +43,21 @@ def get_available_vehicles() -> List[str]:
         if conn:
             conn.close()
 
+
+def get_available_vehicles_simple() -> list:
+    """Zwraca listę dostępnych pojazdów (bez dekoratora @tool)."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        query = "SELECT DISTINCT vehicle_id FROM vehicle_data ORDER BY vehicle_id;"
+        df = pd.read_sql(query, conn)
+        return df['vehicle_id'].tolist()
+    except Exception as e:
+        return [f"Błąd: {e}"]
+    finally:
+        if conn:
+            conn.close()
+
 @tool
 def get_data_range(vehicle_id: str) -> str:
     """
@@ -248,18 +263,17 @@ def format_analysis_report(vehicle_id: str, start_date: str, end_date: str, data
 @tool
 def generate_single_chart(data_json: str, parameter: str) -> str:
     """
-    Generuje wykres liniowy dla pojedynczego parametru (np. 'speed_kmh').
-
+    Generuje wykres liniowy dla pojedynczego parametru i zapisuje do pliku HTML.
+    
     :param data_json: String JSON z danymi zwrócony przez fetch_data_for_chart.
     :param parameter: Nazwa kolumny do wykreślenia (np. 'speed_kmh', 'traction_power_kw').
-    :return: String JSON z definicją wykresu Plotly.
+    :return: String z ścieżką do pliku HTML lub komunikat o błędzie.
     """
     try:
         df = pd.read_json(data_json)
         if df.empty:
-            return json.dumps({"error": "Brak danych do wygenerowania wykresu."})
+            return "Brak danych do wygenerowania wykresu."
         
-        # Konwersja timestamp z powrotem na datetime
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         
         title_map = {
@@ -273,34 +287,41 @@ def generate_single_chart(data_json: str, parameter: str) -> str:
                       title=f'Wykres {title_map.get(parameter, parameter)} w czasie',
                       labels={'timestamp': 'Czas', parameter: title_map.get(parameter, parameter)})
         
-        return fig.to_json()
+        # Zapisz do pliku HTML
+        chart_file = f"/tmp/chart_{parameter}.html"
+        fig.write_html(chart_file)
+        
+        return f"Wykres zapisany: {chart_file}"
     except Exception as e:
-        return json.dumps({"error": f"Błąd podczas generowania wykresu dla {parameter}: {e}"})
+        return f"Błąd podczas generowania wykresu dla {parameter}: {e}"
     
 @tool
 def generate_multi_chart(data_json: str, parameters: List[str]) -> str:
     """
-    Generuje wykres liniowy dla wielu parametrów na jednym wykresie.
-
+    Generuje wykres liniowy dla wielu parametrów i zapisuje do pliku HTML.
+    
     :param data_json: String JSON z danymi zwrócony przez fetch_data_for_chart.
-    :param parameters: Lista nazw kolumn do wykreślenia (np. ['speed_kmh', 'traction_power_kw']).
-    :return: String JSON z definicją wykresu Plotly.
+    :param parameters: Lista nazw kolumn do wykreślenia.
+    :return: String z ścieżką do pliku HTML lub komunikat o błędzie.
     """
     try:
         df = pd.read_json(data_json)
         if df.empty:
-            return json.dumps({"error": "Brak danych do wygenerowania wykresu."})
+            return "Brak danych do wygenerowania wykresu."
         
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         
-        # Plotly Express automatycznie obsługuje wiele serii danych
         fig = px.line(df, x='timestamp', y=parameters, 
                       title='Wykres wielu parametrów telemetrycznych w czasie',
                       labels={'timestamp': 'Czas', 'value': 'Wartość', 'variable': 'Parametr'})
         
-        return fig.to_json()
+        # Zapisz do pliku HTML
+        chart_file = f"/tmp/chart_multi.html"
+        fig.write_html(chart_file)
+        
+        return f"Wykres zapisany: {chart_file}"
     except Exception as e:
-        return json.dumps({"error": f"Błąd podczas generowania wykresu dla wielu parametrów: {e}"})
+        return f"Błąd podczas generowania wykresu dla wielu parametrów: {e}"
 
 # Jeśli chcesz przetestować toolsy lokalnie (po uruchomieniu Dockera):
 if __name__ == "__main__":

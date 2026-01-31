@@ -12,10 +12,12 @@ WORKDIR /app
 
 # Kopiowanie pliku z zależnościami i instalacja
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir streamlit
 
 # Kopiowanie reszty plików projektu
 COPY . .
 
-# Komenda uruchamiająca aplikację (może być zmieniona później)
-CMD ["tail", "-f", "/dev/null"]
+# Komenda uruchamiająca aplikację Streamlit
+CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
